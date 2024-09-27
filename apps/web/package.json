@@ -9,10 +9,18 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.0",
+    "@repo/db": "workspace:*",
     "@repo/ui": "workspace:*",
+    "axios": "^1.7.7",
     "next": "14.2.6",
+    "next-auth": "^4.24.8",
+    "next-themes": "^0.3.0",
     "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "react-dom": "18.3.1",
+    "react-hook-form": "^7.52.0",
+    "sonner": "^1.5.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
