@@ -54,52 +54,6 @@ class SocketService {
       socket.on('message', async (message: string, meeting_id: string, user_id: number) => {
         console.log('message event =', message, meeting_id, user_id);
         let new_message = null;
-        try {
-          const fetched_session = await db.session.findUnique({
-            where: {
-              meeting_id,
-            },
-          });
-          console.log('reached itsjbdasj', fetched_session);
-          if (!fetched_session) {
-            console.log('session not found');
-            return { error: 'Session not found.' };
-          }
-
-          const createdMessage = await db.sessionMessages.create({
-            data: {
-              message,
-              user_id,
-              session_id: fetched_session?.id, // assuming room is the room_id, convert to int if it's a string
-            },
-          });
-
-          const fetchedMessage = await db.sessionMessages.findUnique({
-            where: {
-              id: createdMessage.id,
-            },
-            include: {
-              user: {
-                select: {
-                  first_name: true,
-                  last_name: true,
-                },
-              },
-            },
-          });
-
-          if (fetchedMessage && fetchedMessage.user) {
-            // @ts-ignore
-            fetchedMessage.initials = `${fetchedMessage.user.first_name[0]}${fetchedMessage.user.last_name[0]}`;
-            // @ts-ignore
-            fetchedMessage.user_name = `${fetchedMessage.user.first_name} ${fetchedMessage.user.last_name}`;
-          }
-          new_message = fetchedMessage;
-
-          // console.log("Message stored in database", newMessage);
-        } catch (error) {
-          console.error('Error storing message in database:', error);
-        }
 
         if (new_message) {
           await pub.publish('MESSAGES', JSON.stringify({ meeting_id, message: new_message }));

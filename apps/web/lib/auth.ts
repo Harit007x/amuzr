@@ -1,7 +1,8 @@
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import axios from 'axios';
-import { User } from '@repo/db';
+import { User } from '@repo/db'; // Ensure this imports your User model
+import { db } from '@repo/db'; // Your Prisma client instance
 
 // Helper function to validate user credentials
 async function validateUser(username: string, password: string): Promise<{ data: null } | { data: User }> {
@@ -10,12 +11,12 @@ async function validateUser(username: string, password: string): Promise<{ data:
   const url = `${baseUrl}/api/login`;
   const headers = {
     // eslint-disable-next-line turbo/no-undeclared-env-vars
-    'Client-Service': process.env.CLIENT_SERVICE_KEY || 'default-client-service', // Use environment variables
+    'Client-Service': process.env.CLIENT_SERVICE_KEY || 'default-client-service',
     // eslint-disable-next-line turbo/no-undeclared-env-vars
-    'Auth-Key': process.env.AUTH_SECRET || 'AUTH_SECRET', // Use environment variables
+    'Auth-Key': process.env.AUTH_SECRET || 'AUTH_SECRET',
     'Content-Type': 'application/x-www-form-urlencoded',
   };
-  
+
   const body = new URLSearchParams();
   body.append('username', username);
   body.append('password', password);
@@ -27,7 +28,7 @@ async function validateUser(username: string, password: string): Promise<{ data:
       throw new Error(`Authentication failed: ${response.data.message}`);
     }
 
-    return response as any; // Cast as needed
+    return response.data; // Return the user data from your API
   } catch (error) {
     console.error('Error validating user:', error);
     return { data: null }; // Return null on error
@@ -40,14 +41,24 @@ export const authOptions = {
       id: 'credentials',
       name: 'Credentials',
       credentials: {
-        username: { label: 'email', type: 'text', placeholder: '' },
-        password: { label: 'password', type: 'password', placeholder: '' },
+        username: { label: 'Email', type: 'text', placeholder: '' },
+        password: { label: 'Password', type: 'password', placeholder: '' },
       },
       async authorize(credentials: any): Promise<any> {
         try {
           const user = await validateUser(credentials.username, credentials.password);
           if (user.data !== null) {
-            return user.data;
+            // Persist user in the database
+            const { email, name } = user.data; // Adjust based on your user data structure
+
+            // Create or update the user in the database
+            const dbUser = await db.user.upsert({
+              where: { email }, // Assuming email is unique
+              update: { name }, // Update fields if user exists
+              create: { email, name }, // Create a new user
+            });
+
+            return dbUser; // Return the persisted user
           }
           return null; // Return null if user data could not be retrieved
         } catch (e) {
@@ -57,22 +68,36 @@ export const authOptions = {
       },
     }),
     GoogleProvider({
+      // eslint-disable-next-line turbo/no-undeclared-env-vars
       clientId: process.env.GOOGLE_CLIENT_ID as string,
+      // eslint-disable-next-line turbo/no-undeclared-env-vars
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      async profile(profile) {
+        const { email, name } = profile; // Adjust based on what profile returns
+
+        // Create or update the user in the database
+        const dbUser = await db.user.upsert({
+          where: { email }, // Assuming email is unique
+          update: { name }, // Update fields if user exists
+          create: { email, name }, // Create a new user
+        });
+
+        return dbUser; // Return the persisted user
+      },
     }),
   ],
   // eslint-disable-next-line turbo/no-undeclared-env-vars
-  secret: process.env.NEXTAUTH_SECRET, // Use environment variable
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    session: async ({ session, token }: any) => {
+    async session({ session, token }:any) {
       if (session?.user) {
-        session.user = token.uid;
+        session.user.id = token.id; // Assuming your user model has an `id` field
       }
       return session;
     },
-    jwt: async ({ user, token }: any) => {
+    async jwt({ user, token }:any) {
       if (user) {
-        token.uid = user;
+        token.id = user.id; // Assuming your user model has an `id` field
       }
       return token;
     },
