@@ -19,4 +19,47 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  Room      Room[]
+  Vote      Vote[]
+  SpotifyTokens     SpotifyTokens[]
+}
+
+model SpotifyTokens {
+  id        String   @id @default(cuid())
+  access_token     String   @unique
+  refresh_token    String   @unique
+  expires_in     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+}
+
+model Room {
+  id        Int     @id @default(autoincrement())
+  name      String
+  ownerId   String // Updated to String to match User.id type
+  owner     User    @relation(fields: [ownerId], references: [id])
+  songs     Song[]
+  isPlaying Boolean @default(false)
+  volume    Float   @default(1.0)
+}
+
+model Vote {
+  id     Int    @id @default(autoincrement())
+  songId Int
+  song   Song   @relation(fields: [songId], references: [id])
+  userId String // Updated to String to match User.id type
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Song {
+  id        Int    @id @default(autoincrement())
+  title     String
+  artist    String
+  roomId    Int
+  room      Room   @relation(fields: [roomId], references: [id])
+  votes     Vote[]
+  videoId   String // YouTube video ID
+  thumbnail String // YouTube thumbnail URL
 }

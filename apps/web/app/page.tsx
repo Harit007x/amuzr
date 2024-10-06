@@ -4,11 +4,16 @@ import { Button } from "@repo/ui/shadcn";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import Image from "next/image"; // Ensure you're importing Image
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
+
   const { setTheme, theme } = useTheme();
   const { data: session, status } = useSession();
-
+  const handleSpotifyConnect = () => {
+    window.location.href = "/api/login";
+  };
   return (
     <main className="flex justify-center items-center text-xl h-screen w-full bg-background">
       {session?.user?.image && (
@@ -32,13 +37,13 @@ export default function Home() {
           onClick={() => setTheme("light")}
         />
       )}
-
+      <Button onClick={handleSpotifyConnect}>Connect Spotify</Button>
       <Button
         onClick={() => signOut({ callbackUrl: "/" })} // Redirects to the homepage after logout
       >
         Logout
       </Button>
-
+      <Button onClick={() =>  router.push("/player")}>Player</Button>
       <Button>Default</Button>
     </main>
   );
