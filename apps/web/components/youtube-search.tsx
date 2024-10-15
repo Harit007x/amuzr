@@ -16,10 +16,10 @@ export const YouTubeSearch = () => {
     setResults(songs);
   };
 
-  const addSongToQueue = (song: any) => {
+  // const addSongToQueue = (song: any) => {
     // Emit event to add the song to the queue
     // socket.emit('addSong', { roomId, song });
-  };
+  // };
   const handlePlay = (videoID: any) => {
     setVideoID(videoID);
   };
@@ -49,7 +49,7 @@ export const YouTubeSearch = () => {
             />
             <h4>{song.title}</h4>
             <p>{song.artist}</p>
-            <Button onClick={() => addSongToQueue(song)}>Add to Queue</Button>
+            {/* <Button onClick={() => addSongToQueue(song)}>Add to Queue</Button> */}
           </div>
         ))}
       </div>

@@ -1,22 +1,13 @@
 "use client";
-import { Button, Input } from "@repo/ui/shadcn";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@repo/ui/form";
 import * as React from "react";
 import { cn } from "@repo/ui/utils";
 // import { userRegisterSchema } from "../actions/user/schema";
 // import { createUser } from "../actions/user/user-actions";
-import { Icons } from "@repo/ui/icons";
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function UserRegisterForm({ className, ...props }: UserAuthFormProps) {
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  // const [isLoading, setIsLoading] = React.useState<boolean>(false);
 
   // async function onSubmit(formData: z.infer<typeof userRegisterSchema>) {
   //   setIsLoading(true);
@@ -49,83 +40,7 @@ export function UserRegisterForm({ className, ...props }: UserAuthFormProps) {
 
   return (
     <div className={cn("grid gap-6", className)} {...props}>
-      <Form>
-        <form>
-          <div className="flex flex-col gap-4 py-2 pb-6">
-            <div className="flex flex-col gap-2 items-start">
-              {/* <Label htmlFor="first_name">
-                            Full Name
-                        </Label> */}
-              <div className="flex items-center gap-4 ">
-                <FormField
-                  // control={form.control}
-                  name="first_name"
-                  disabled={isLoading}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input placeholder="First Name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                {/* <span className="text-muted-foreground">-</span> */}
-                <FormField
-                  // control={form.control}
-                  name="last_name"
-                  disabled={isLoading}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input placeholder="Last Name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <FormField
-              // control={form.control}
-              name="username"
-              disabled={isLoading}
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input placeholder="Username" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              // control={form.control}
-              name="password"
-              disabled={isLoading}
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input type="password" placeholder="Password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <Button
-            className="md:right-8 md:top-8 w-full"
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading && (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            )}
-            Sign-Up with Email
-          </Button>
-        </form>
-      </Form>
+      
       {/* <div className="relative">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t" />

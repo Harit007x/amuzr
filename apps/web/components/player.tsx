@@ -1,11 +1,10 @@
 "use client";
 import Image from "next/image";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { Play, Pause, SkipForward, Volume2 } from "lucide-react";
+import { SkipForward, Volume2 } from "lucide-react";
 import { Button, Input, ScrollArea, Slider } from "@repo/ui/shadcn";
 import { searchSpotify } from "../lib/spotify";
 import { cn } from "@repo/ui/utils";
-import { addSongsToRoom } from "../lib/actions";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "@repo/recoil";
 import { ISpotifyPlayer, WebPlaybackInstance } from "../types/spotify";
@@ -38,16 +37,16 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(50);
   const [newSong, setNewSong] = useState("");
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [spotifyPlayer, setSpotifyPlayer] = useState<ISpotifyPlayer | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const user = useRecoilValue(userAtom);
+  // const user = useRecoilValue(userAtom);
   const [progress, setProgress] = useState(0);  // Current playback time (in milliseconds)
   const [duration, setDuration] = useState(0);  // Total duration of the song (in milliseconds)
-  const [isDragging, setIsDragging] = useState(false);
+  // const [isDragging, setIsDragging] = useState(false);
   const [trackDuration, setTrackDuration] = useState(0);
 
   const formatTime = (milliseconds: number) => {
@@ -88,7 +87,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
   
       const handlePlayerStateChanged = (state: any) => {
         console.log('State changed', state);
-        setIsPlaying(!state.paused);
+        // setIsPlaying(!state.paused);
         setProgress(state.position);
         setDuration(state.duration);
         const track = state.track_window.current_track;
@@ -151,9 +150,9 @@ export default function MusicPlayer(props: IMusicPlayer) {
           const state = await spotifyPlayer.getCurrentState();
           if (state) {
             const { position, duration } = state;
-            if (!isDragging) {
-              setProgress(position);
-            }
+            // if (!isDragging) {
+            //   setProgress(position);
+            // }
             setDuration(duration);
           }
         } catch (error) {
@@ -167,7 +166,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
     }, 1000); // Update every second
   
     return () => clearInterval(intervalId);
-  }, [spotifyPlayer, isDragging]);
+  }, [spotifyPlayer]);
   
 
   // useEffect(() => {
@@ -220,7 +219,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
           'Authorization': `Bearer ${props.access_token}`
         },
       });
-      setIsPlaying(true);
+      // setIsPlaying(true);
     } catch (error) {
       console.error("Error playing the song:", error);
     }
@@ -235,7 +234,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
     } else {
       setCurrentSong(null);
       spotifyPlayer?.pause();
-      setIsPlaying(false);
+      // setIsPlaying(false);
     }
   };
 

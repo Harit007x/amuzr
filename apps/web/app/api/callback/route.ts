@@ -3,7 +3,7 @@ import axios from "axios";
 import { db } from "@repo/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
-import { toast } from 'sonner';
+// import { toast } from 'sonner';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -38,9 +38,10 @@ export async function GET(request: Request) {
     
     // Create Spotify tokens for the user
     await createSpotifyTokensForUser(session?.user?.id, access_token, refresh_token, expires_in);
-    toast.success("Spotify account connected successfully", {
-      duration: 1500,
-    });
+    // toast.success("Spotify account connected successfully", {
+    //   duration: 1500,
+    // });
+    console.log("checking it passed - - - -- - - -")
     return NextResponse.redirect(new URL('/', request.url));
     
   } catch (error) {

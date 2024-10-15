@@ -14,7 +14,7 @@ export default function Home() {
   const user = useRecoilValue(userAtom);
 
   const { setTheme, theme } = useTheme();
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const handleSpotifyConnect = () => {
     window.location.href = "/api/login";
   };
