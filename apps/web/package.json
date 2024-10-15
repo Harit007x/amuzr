@@ -5,7 +5,7 @@
   "scripts": {
     "prisma:migrate": "cd ../../packages/db && pnpx prisma migrate dev && cd ../../apps/web",
     "dev": "next dev --turbo",
-    "build": "next build && pnpm run prisma:migrate",
+    "build": "pnpm run prisma:migrate && next build",
     "start": "next start",
     "lint": "next lint"
   },
