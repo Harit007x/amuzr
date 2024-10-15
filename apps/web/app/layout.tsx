@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "@repo/ui/globals.css";
 import Providers from "./providers";
 import { Toaster } from "@repo/ui/shadcn";
+import SessionChange from "../components/session-change";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <Providers>
+          <SessionChange />
           {children}
           <Toaster />
         </Providers>

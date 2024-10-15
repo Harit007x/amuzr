@@ -49,13 +49,13 @@ export const authOptions = {
           const user = await validateUser(credentials.username, credentials.password);
           if (user.data !== null) {
             // Persist user in the database
-            const { email, name } = user.data; // Adjust based on your user data structure
+            const { email, name , profile_image } = user.data; // Adjust based on your user data structure
 
             // Create or update the user in the database
             const dbUser = await db.user.upsert({
               where: { email }, // Assuming email is unique
               update: { name }, // Update fields if user exists
-              create: { email, name }, // Create a new user
+              create: { email, name, profile_image }, // Create a new user
             });
 
             return dbUser; // Return the persisted user
@@ -73,16 +73,17 @@ export const authOptions = {
       // eslint-disable-next-line turbo/no-undeclared-env-vars
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       async profile(profile) {
-        const { email, name } = profile; // Adjust based on what profile returns
+        console.log("g user =", profile)
+        const { email, name, picture } = profile; // Adjust based on what profile returns
 
         // Create or update the user in the database
         const dbUser = await db.user.upsert({
           where: { email }, // Assuming email is unique
           update: { name }, // Update fields if user exists
-          create: { email, name }, // Create a new user
+          create: { email, name, profile_image: picture }, // Create a new user
         });
 
-        return dbUser; // Return the persisted user
+        return dbUser;
       },
     }),
   ],

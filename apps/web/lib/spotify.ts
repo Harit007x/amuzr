@@ -3,7 +3,7 @@ import qs from "qs";
 const client_id = "eca06e3857cb4d93a7af41a0ffe8d1fc";
 const redirect_uri = "http://localhost:3000/api/callback";
 
-console.log('hello api =', redirect_uri)
+// console.log('hello api =', redirect_uri)
 
 const scopes = [
   "user-read-private",

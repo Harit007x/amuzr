@@ -1,16 +1,25 @@
 import MusicPlayer from "../../../components/player";
-import { fetchSpotifyTokenOfUser } from "../../../lib/actions";
+import { fetchSpotifyTokenOfUser } from "../../../lib/actions"; // Import the action
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../../../lib/auth";
 
+// This is a server component in Next.js
 export default async function Page() {
-  const access_token = await fetchSpotifyTokenOfUser('cm1oizfkm0000e4rxr2xe6gb0')
-  console.log('token =', access_token)
+  // Get the session from NextAuth
+  const session = await getServerSession(authOptions);
+
+  // Fetch the Spotify token for the current user using the server action
+  const { access_token } = await fetchSpotifyTokenOfUser(session?.user?.id);
+
+  // Handle the case where access_token is null or undefined
   if (!access_token) {
-    // Handle the case where access_token is null, e.g. show an error message or return null
-    return <div>No token found</div>;
+    return <div>No Spotify token found. Please connect your Spotify account.</div>;
   }
-  return(
+
+  // Pass the token to your MusicPlayer component
+  return (
     <MusicPlayer
-      access_token={access_token.tokenObj.access_token}
+      access_token={access_token} // Pass the fetched access token
     />
-  )
+  );
 }

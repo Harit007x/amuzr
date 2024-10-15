@@ -5,17 +5,27 @@ import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import Image from "next/image"; // Ensure you're importing Image
 import { useRouter } from "next/navigation";
+import { createRoom } from "../lib/actions";
+import { useRecoilValue } from "recoil";
+import { userAtom } from "@repo/recoil";
 
 export default function Home() {
   const router = useRouter();
+  const user = useRecoilValue(userAtom);
 
   const { setTheme, theme } = useTheme();
   const { data: session, status } = useSession();
   const handleSpotifyConnect = () => {
     window.location.href = "/api/login";
   };
+
+  const handleCreateRoom = async () => {
+    await createRoom(user?.user_id as string);
+  }
+
   return (
     <main className="flex justify-center items-center text-xl h-screen w-full bg-background">
+      <p>{user?.name}</p>
       {session?.user?.image && (
         <Image
           src={session.user.image} // Path to the image from the session
@@ -44,7 +54,9 @@ export default function Home() {
         Logout
       </Button>
       <Button onClick={() =>  router.push("/player")}>Player</Button>
-      <Button>Default</Button>
+      <Button
+        onClick={() => handleCreateRoom()}
+      >Create room</Button>
     </main>
   );
 }

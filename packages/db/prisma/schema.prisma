@@ -19,6 +19,7 @@ model User {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  profile_image   String
   Room      Room[]
   Vote      Vote[]
   SpotifyTokens     SpotifyTokens[]
@@ -37,8 +38,9 @@ model SpotifyTokens {
 
 model Room {
   id        Int     @id @default(autoincrement())
+  room_code String  @unique
   name      String
-  ownerId   String // Updated to String to match User.id type
+  ownerId   String
   owner     User    @relation(fields: [ownerId], references: [id])
   songs     Song[]
   isPlaying Boolean @default(false)
@@ -58,8 +60,8 @@ model Song {
   title     String
   artist    String
   roomId    Int
+  videoId   String
+  imageUrl String
   room      Room   @relation(fields: [roomId], references: [id])
   votes     Vote[]
-  videoId   String // YouTube video ID
-  thumbnail String // YouTube thumbnail URL
 }

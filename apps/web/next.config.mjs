@@ -20,7 +20,7 @@ const nextConfig = {
       },
     ],
   },
-  transpilePackages: ['@repo/db', '@prisma/client'],
+  transpilePackages: ['@repo/db', '@prisma/client', '@repo/recoil'],
 };
 
 export default nextConfig;
