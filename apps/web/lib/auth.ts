@@ -73,7 +73,6 @@ export const authOptions = {
       // eslint-disable-next-line turbo/no-undeclared-env-vars
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       async profile(profile) {
-        console.log("g user =", profile)
         const { email, name, picture } = profile; // Adjust based on what profile returns
 
         // Create or update the user in the database
@@ -82,7 +81,7 @@ export const authOptions = {
           update: { name }, // Update fields if user exists
           create: { email, name, profile_image: picture }, // Create a new user
         });
-
+        console.log("db usr =", dbUser)
         return dbUser;
       },
     }),
@@ -90,18 +89,22 @@ export const authOptions = {
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
-    async session({ session, token }:any) {
-      if (session?.user) {
-        session.user.id = token.id; // Assuming your user model has an `id` field
-      }
-      return session;
-    },
     async jwt({ user, token }:any) {
       if (user) {
-        token.id = user.id; // Assuming your user model has an `id` field
+        token.id = user.id;
+        token.image = user.profile_image;
+        // Assuming your user model has an `id` field
       }
       return token;
     },
+    async session({ session, token }:any) {
+      if (session?.user) {
+        session.user.id = token.id;
+        session.user.image = token.image;
+        // session.user.image = token.e
+      }
+      return session;
+    }
   },
   pages: {
     signIn: '/login',

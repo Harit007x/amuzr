@@ -20,7 +20,7 @@ export default function Home() {
   };
 
   const handleCreateRoom = async () => {
-    await createRoom(user?.user_id as string);
+    await createRoom(user?.id as string);
   }
 
   return (

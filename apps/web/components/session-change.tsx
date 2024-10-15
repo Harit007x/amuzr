@@ -1,22 +1,19 @@
 'use client';
-import { userAtom } from '@repo/recoil';
+import { userAtom, useSessionData } from '@repo/recoil';
 import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useSetRecoilState } from 'recoil';
 
 const SessionChange = () => {
   const session = useSession();
-  // console.log('session change =', session)
+  console.log('session change =', session?.data?.user)
   const setUser = useSetRecoilState(userAtom);
   useEffect(() => {
-    setUser({
-      // @ts-ignore
-      user_id: session?.data?.user?.id,
-      // @ts-ignore
-      username: session?.data?.user?.email,
-      // @ts-ignore
-      name: session?.data?.user?.name,
-    });
+    const user = session.data?.user as useSessionData;
+    console.log('user = ', user)
+    if(user){
+      setUser(user);
+    }
   }, [session]);
   // if (session.status === 'loading') {
   //     return(

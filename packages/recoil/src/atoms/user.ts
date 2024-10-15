@@ -1,9 +1,10 @@
 import { atom } from 'recoil';
 
 export interface useSessionData {
-  user_id: string
-  username: string
+  id: string
+  email: string
   name: string
+  image: string 
 }
 
 export const userAtom = atom<null | useSessionData>({
