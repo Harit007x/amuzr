@@ -48,6 +48,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const [progress, setProgress] = useState(0);  // Current playback time (in milliseconds)
   const [duration, setDuration] = useState(0);  // Total duration of the song (in milliseconds)
   const [isDragging, setIsDragging] = useState(false);
+  const [trackDuration, setTrackDuration] = useState(0);
 
   const formatTime = (milliseconds: number) => {
     const minutes = Math.floor(milliseconds / 60000);
@@ -108,7 +109,11 @@ export default function MusicPlayer(props: IMusicPlayer) {
       player.addListener('not_ready', handlePlayerNotReady);
       player.addListener('player_state_changed', handlePlayerStateChanged);
   
-      player.connect();
+      player.connect().then((success:boolean) => {
+        if (success) {
+          console.log('The Web Playback SDK successfully connected to Spotify!', success);
+        }
+      });
 
       // Cleanup function
       // return () => {
@@ -249,24 +254,99 @@ export default function MusicPlayer(props: IMusicPlayer) {
     setNewSong("");
   };
 
-  const handleVolumeChange = (value: number[]) => {
-    const newVolume = value[0];
+  const handleSeekTrack = async (positionMs: number[]) => {
+    const ms: number = positionMs[0] || 0
+    console.log("check the seconds =", ms)
+    if (positionMs === undefined || ms < 0) {
+      console.error("Invalid position to seek.");
+      return;
+    }
+  
+    try {
+      await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${ms}&device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${props.access_token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+  
+      console.log(`Track seeked to ${ms} milliseconds.`);
+    } catch (error) {
+      console.error("Error seeking the track:", error);
+    }
+  };
+  
 
+  const handleVolumeChange = async (value: number[]) => {
+    const newVolume = value[0];
+  
     if (newVolume === undefined) {
       console.error("New volume not defined.");
       return;
     }
-
-    if (isPlayerReady && spotifyPlayer) {
-      console.log("Changing volume");
-      spotifyPlayer.setVolume(newVolume / 100).then(()=>{
-        console.log("Volume updated!")
-      }).catch(console.error);
-    } else {
-      console.log("Player not ready or is null");
+  
+    try {
+      await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newVolume}&device_id=${deviceId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${props.access_token}`
+        },
+      });
+      console.log("Volume updated to", newVolume);
+    } catch (error) {
+      console.error("Error updating the volume:", error);
     }
+  
     setVolume(newVolume);
   };
+  
+  const fetchTrackProgress = async () => {
+    try {
+      const response = await fetch('https://api.spotify.com/v1/me/player', {
+        headers: {
+          'Authorization': `Bearer ${props.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        console.error("Failed to fetch track progress:", response.statusText);
+        return;
+      }
+  
+      // Check if the response body is empty
+      const textResponse = await response.text();
+      if (!textResponse) {
+        console.log("Empty response body, no track is playing.");
+        return;
+      }
+  
+      const data = JSON.parse(textResponse);
+      const { progress_ms, item } = data;
+  
+      if (progress_ms !== undefined && item) {
+        const trackDuration = item.duration_ms;
+        console.log(`Track progress: ${progress_ms} / ${trackDuration}`);
+        setProgress(progress_ms); // Update the progress in the state
+        setTrackDuration(trackDuration); // Update track duration in the state
+      } else {
+        console.log("No track is currently playing.");
+      }
+  
+    } catch (error) {
+      console.error("Error fetching track progress:", error);
+    }
+  };
+  
+  
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchTrackProgress();
+    }, 1000); // Call every second
+  
+    return () => clearInterval(intervalId); // Cleanup interval on component unmount
+  }, [currentSong]); // Run effect when access_token changes
   
   if (!props.access_token) {
     return <div>Error: No valid token provided</div>;
@@ -307,10 +387,12 @@ export default function MusicPlayer(props: IMusicPlayer) {
 
               <Slider
                 value={[progress]}
-                max={duration}
-                // onValueChange={handleSeekChange}
+                max={trackDuration}
+                onValueChange={handleSeekTrack}
                 // onMouseDown={handleSeekMouseDown}
                 // onMouseUp={handleSeekMouseUp}
+                step={1}
+                // onChange={(value) => handleSeekTrack(value)}
                 className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer appearance-none"
                 // thumbClassName="w-4 h-4 bg-green-500 rounded-full shadow-md"
                 // trackClassName="bg-green-500 h-2"
