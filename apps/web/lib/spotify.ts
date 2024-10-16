@@ -1,7 +1,7 @@
 import axios from "axios";
 import qs from "qs";
 const client_id = "eca06e3857cb4d93a7af41a0ffe8d1fc";
-const redirect_uri = "http://localhost:3000/api/callback";
+const redirect_uri = process.env.NEXT_SPOTIFY_REDIRECT_URI as string;
 
 // console.log('hello api =', redirect_uri)
 
@@ -31,9 +31,9 @@ export async function getSpotifyAccessToken(code: string) {
   const data = qs.stringify({
     grant_type: "authorization_code",
     code: code,
-    redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-    client_id: process.env.SPOTIFY_CLIENT_ID,
-    client_secret: process.env.SPOTIFY_CLIENT_SECRET,
+    redirect_uri: process.env.NEXT_SPOTIFY_REDIRECT_URI,
+    client_id: process.env.NEXT_SPOTIFY_CLIENT_ID,
+    client_secret: process.env.NEXT_SPOTIFY_CLIENT_SECRET,
   });
 
   const headers = {
