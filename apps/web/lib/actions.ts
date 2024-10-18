@@ -5,6 +5,7 @@ import { customAlphabet } from 'nanoid';
 import formateRoomCode from "./helpers";
 import { Song } from "../components/player";
 import { revalidatePath } from "next/cache";
+import { access } from "fs";
 
 export const fetchSpotifyTokenOfUser = async (userId: string) => {
   try {
@@ -14,7 +15,10 @@ export const fetchSpotifyTokenOfUser = async (userId: string) => {
     });
 
     if (!tokenObj) {
-      throw new Error('No token found for this user');
+      return  { 
+        access_token: null,
+        spotifyConnected: false 
+      };
     }
 
     // Check if the token has expired
@@ -60,11 +64,13 @@ export const fetchSpotifyTokenOfUser = async (userId: string) => {
       console.log('Token refreshed successfully');
       return { access_token };
     }
-
-    return { access_token: tokenObj.access_token };
+    return { 
+      access_token: tokenObj.access_token,
+      spotifyConnected: tokenObj.access_token && true 
+    };
   } catch (error) {
     console.error('Error fetching Spotify token:', error);
-    throw new Error('Failed to fetch token');
+    throw new Error('Failed to fetch the access token');
   }
 };
 

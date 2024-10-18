@@ -1,13 +1,11 @@
 "use client";
+import debounce from 'lodash.debounce';
 import Image from "next/image";
-import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { SkipForward, Volume2 } from "lucide-react";
-import { Button, Input, ScrollArea, Slider } from "@repo/ui/shadcn";
+import { Button, Input, Slider } from "@repo/ui/shadcn";
 import { searchSpotify } from "../lib/spotify";
-import { cn } from "@repo/ui/utils";
-import { useRecoilValue } from "recoil";
-import { userAtom } from "@repo/recoil";
-import { ISpotifyPlayer, WebPlaybackInstance } from "../types/spotify";
+import { WebPlaybackInstance } from "../types/spotify";
 import { Icons } from "@repo/ui/icons";
 
 export interface Song {
@@ -40,6 +38,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [volume, setVolume] = useState(50);
   const [newSong, setNewSong] = useState("");
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);  // Current playback time (in milliseconds)
@@ -146,6 +145,8 @@ export default function MusicPlayer(props: IMusicPlayer) {
       } else {
         console.log('Queue is empty');
         setCurrentSong(null);
+        setIsPlaying(false);
+
         if (playerRef.current) {
           playerRef.current.pause().catch(console.error);
         }
@@ -172,6 +173,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
           'Authorization': `Bearer ${props.access_token}`
         },
       });
+      setIsPlaying(true);
       setCurrentSong(song);
     } catch (error) {
       console.error("Error playing the song:", error);
@@ -187,6 +189,11 @@ export default function MusicPlayer(props: IMusicPlayer) {
       return newQueue;
     });
   }, [currentSong, playSong]);
+  const currentSongRef = useRef<Song | null>(null); // Initialize with null
+
+  useEffect(()=>{
+    currentSongRef.current = currentSong
+  },[currentSong])
 
   const nextSong = useCallback(() => {
     setQueue((prevQueue) => {
@@ -196,10 +203,10 @@ export default function MusicPlayer(props: IMusicPlayer) {
         setCurrentSong(nextSong);
         playSong(nextSong);
       } else {
-        setCurrentSong(null);
-        if (playerRef.current) {
-          playerRef.current.pause().catch(console.error);
-        }
+        console.log('---- there are no next songs to play ----')
+      }
+      if(nextSong === undefined && currentSongRef.current !== undefined){
+        return prevQueue
       }
       return newQueue;
     });
@@ -208,6 +215,9 @@ export default function MusicPlayer(props: IMusicPlayer) {
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(newSong === ""){
+      return
+    }
     const results = await searchSpotify(newSong, props.access_token);
     const formattedResults = results.map((item: any) => ({
       videoId: item.id,
@@ -243,9 +253,10 @@ export default function MusicPlayer(props: IMusicPlayer) {
       console.error("Error seeking the track:", error);
     }
   };
-  
+ 
+  let timeoutID: any
 
-  const handleVolumeChange = async (value: number[]) => {
+  const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
   
     if (newVolume === undefined) {
@@ -253,21 +264,27 @@ export default function MusicPlayer(props: IMusicPlayer) {
       return;
     }
   
-    try {
-      await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newVolume}&device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${props.access_token}`
-        },
-      });
-      console.log("Volume updated to", newVolume);
-    } catch (error) {
-      console.error("Error updating the volume:", error);
+    if(timeoutID){
+      clearTimeout(timeoutID);
     }
   
+    timeoutID = setTimeout(async () => {
+      try {
+        await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newVolume}&device_id=${deviceId}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${props.access_token}`
+          },
+        });
+        console.log("Volume updated to", newVolume);
+      } catch (error) {
+        console.error("Error updating the volume:", error);
+      }
+    }, 500)
+
     setVolume(newVolume);
   };
-  
+
   const fetchTrackProgress = async () => {
     try {
       const response = await fetch('https://api.spotify.com/v1/me/player', {
@@ -310,8 +327,13 @@ export default function MusicPlayer(props: IMusicPlayer) {
   
   
   useEffect(() => {
- 
     let intervalId = undefined
+ 
+    if(!isPlaying){
+      clearInterval(intervalId)
+      return
+    }
+
     if(currentSong){
       intervalId = setInterval(() => {
         fetchTrackProgress();
@@ -319,7 +341,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
     }
   
     return () => clearInterval(intervalId); // Cleanup interval on component unmount
-  }, [currentSong]); // Run effect when access_token changes
+  }, [currentSong, isPlaying]); // Run effect when access_token changes
   
   if (!props.access_token) {
     return <div>Error: No valid token provided</div>;
@@ -328,7 +350,23 @@ export default function MusicPlayer(props: IMusicPlayer) {
 
   const closeSearch = () => {
     setIsSearchOpen(false);
-    setSearchResults([])
+    setSearchResults([]);
+  }
+
+  const togglePlayPause = async () => {
+    try {
+      const url = isPlaying === false ? 'https://api.spotify.com/v1/me/player/play' : 'https://api.spotify.com/v1/me/player/pause'
+      await fetch(url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${props.access_token}`
+        },
+      });
+      setIsPlaying(!isPlaying);
+    } catch (error) {
+      console.error("Error playing the song:", error);
+    }
   }
 
   return (
@@ -376,13 +414,13 @@ export default function MusicPlayer(props: IMusicPlayer) {
           {currentSong && (
             <div className="flex items-center justify-between">
               <div className="space-x-2">
-                {/* <Button onClick={togglePlayPause} variant="outline">
+                <Button onClick={togglePlayPause} variant="outline">
                   {isPlaying ? (
-                    <Pause className="h-4 w-4" />
+                    <Icons.circlePause className="h-4 w-4" />
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <Icons.circlePlay className="h-4 w-4" />
                   )}
-                </Button> */}
+                </Button>
                 <Button onClick={nextSong} variant="outline">
                   <SkipForward className="h-4 w-4" />
                 </Button>
@@ -490,7 +528,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
                     <h3 className="font-medium truncate">{song.title}</h3>
                     <p className="text-sm text-gray-400 truncate">{song.artist}</p>
                   </div>
-                  <Button
+                  {/* <Button
                     size="sm"
                     variant="outline"
                     className="whitespace-nowrap"
@@ -498,7 +536,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
                     // onClick={() => addSong(song)}
                   >
                     Upvote
-                  </Button>
+                  </Button> */}
                 </div>
               </div>
             ))}

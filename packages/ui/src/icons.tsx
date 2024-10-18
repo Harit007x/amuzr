@@ -55,6 +55,10 @@ import {
   ClipboardPaste,
   Eye,
   EyeOff,
+  CirclePlay,
+  Play,
+  CirclePause,
+  CircleArrowRight,
 } from 'lucide-react';
 
 export const Icons = {
@@ -112,6 +116,9 @@ export const Icons = {
   clipBoardPaste: ClipboardPaste,
   eye: Eye,
   eyeOff: EyeOff,
+  circlePlay: CirclePlay,
+  circlePause: CirclePause,
+  circleArrowRight: CircleArrowRight,
   checkSVG: ({ ...props }: LucideProps) => (
     <svg
       aria-hidden="true"

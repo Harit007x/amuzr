@@ -3,6 +3,7 @@ import axios from "axios";
 import { db } from "@repo/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
+import { use } from "react";
 // import { toast } from 'sonner';
 
 export async function GET(request: Request) {
@@ -53,6 +54,17 @@ export async function GET(request: Request) {
 async function createSpotifyTokensForUser(userId: string, accessToken: string, refreshToken: string, expires_in: number) {
   console.log("check the params =", userId, accessToken, refreshToken);
   try {
+
+    const isToken = await db.spotifyTokens.findFirst({
+      where:{ userId: userId}
+    })
+
+    if(isToken){
+      await db.spotifyTokens.delete({
+        where: { id: isToken.id } // Assuming `id` is the primary key
+      });
+    } 
+
     const spotifyToken = await db.spotifyTokens.create({
       data: {
         access_token: accessToken,
