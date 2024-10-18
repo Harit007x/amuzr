@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useLayoutEffect, useCallback } from "react";
 import { SkipForward, Volume2 } from "lucide-react";
 import { Button, Input, ScrollArea, Slider } from "@repo/ui/shadcn";
 import { searchSpotify } from "../lib/spotify";
@@ -8,6 +8,7 @@ import { cn } from "@repo/ui/utils";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "@repo/recoil";
 import { ISpotifyPlayer, WebPlaybackInstance } from "../types/spotify";
+import { Icons } from "@repo/ui/icons";
 
 export interface Song {
   title: string;
@@ -34,20 +35,17 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const deviceIdRef = useRef<string | null>(null);
   const playerStateRef = useRef<any>(null);
 
-  const [isPlayerReady, setIsPlayerReady] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
-  // const [isPlaying, setIsPlaying] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [volume, setVolume] = useState(50);
   const [newSong, setNewSong] = useState("");
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [spotifyPlayer, setSpotifyPlayer] = useState<ISpotifyPlayer | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  // const user = useRecoilValue(userAtom);
   const [progress, setProgress] = useState(0);  // Current playback time (in milliseconds)
   const [duration, setDuration] = useState(0);  // Total duration of the song (in milliseconds)
-  // const [isDragging, setIsDragging] = useState(false);
   const [trackDuration, setTrackDuration] = useState(0);
+  const isPlayerFullyReadyRef = useRef<boolean>(false);
 
   const formatTime = (milliseconds: number) => {
     const minutes = Math.floor(milliseconds / 60000);
@@ -55,163 +53,118 @@ export default function MusicPlayer(props: IMusicPlayer) {
     return `${minutes}:${seconds.length === 1 ? '0' : ''}${seconds}`;
   };
 
-  useLayoutEffect(() => {
+  const initializePlayer = useCallback(() => {
     if (!props.access_token) return;
-  
-    const script = document.createElement("script");
-    script.src = "https://sdk.scdn.co/spotify-player.js";
-    script.async = true;
-    document.body.appendChild(script);
-  
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      const player = new window.Spotify.Player({
-        name: 'Web Playback SDK',
-        getOAuthToken: (cb: any) => { cb(props.access_token as string); },
-        volume: 0.5,
-      });
-  
-      setSpotifyPlayer(player);
-  
-      const handlePlayerReady = ({ device_id }: WebPlaybackInstance) => {
-        console.log('Ready with Device ID', device_id);
-        playerRef.current = player;
-        deviceIdRef.current = device_id;
-        setDeviceId(device_id);
-        setIsPlayerReady(true);
-      };
-  
-      const handlePlayerNotReady = ({ device_id }: WebPlaybackInstance) => {
-        console.log('Device ID has gone offline', device_id);
-        setDeviceId(null);
-      };
-  
-      const handlePlayerStateChanged = (state: any) => {
-        console.log('State changed', state);
-        // setIsPlaying(!state.paused);
-        setProgress(state.position);
-        setDuration(state.duration);
-        const track = state.track_window.current_track;
-        playerStateRef.current = state;
-        if (track) {
-          setCurrentSong({
-            title: track.name,
-            artist: track.artists[0].name,
-            videoId: track.id,
-            votes: 0,
-            imageUrl: track.album.images[0]?.url,
-            uri: track.uri,
-          });
-        }
-      };
-  
-      player.addListener('ready', handlePlayerReady);
-      player.addListener('not_ready', handlePlayerNotReady);
-      player.addListener('player_state_changed', handlePlayerStateChanged);
-  
-      player.connect().then((success:boolean) => {
-        if (success) {
-          console.log('The Web Playback SDK successfully connected to Spotify!', success);
-        }
-      });
 
-      // Cleanup function
-      // return () => {
-      //   console.log("cleanup called")
-      //   player.removeListener('ready', handlePlayerReady);
-      //   player.removeListener('not_ready', handlePlayerNotReady);
-      //   player.removeListener('player_state_changed', handlePlayerStateChanged);
-      //   player.disconnect();
-  
-      //   if (script && document.body.contains(script)) {
-      //     document.body.removeChild(script);
-      //   }
-      // };
+    const player = new window.Spotify.Player({
+      name: 'Web Playback SDK',
+      getOAuthToken: (cb: any) => { cb(props.access_token as string); },
+      volume: 0.5,
+    });
+
+    playerRef.current = player;
+
+    const handlePlayerReady = ({ device_id }: WebPlaybackInstance) => {
+      console.log('Ready with Device ID', device_id);
+      deviceIdRef.current = device_id;
+      setDeviceId(device_id);
+      isPlayerFullyReadyRef.current = true;
     };
-  
-    // In case the script fails to load or is removed externally
-    return () => {
-      if (script && document.body.contains(script)) {
-        document.body.removeChild(script);
+
+    const handlePlayerStateChanged = (state: any) => {
+      console.log('State changed', state.position, state.duration);
+      setProgress(state.position);
+      setDuration(state.duration);
+      
+      if (playerStateRef.current && !playerStateRef.current.paused && state.paused && state.position === 0) {
+        console.log('Track ended');
+        handleTrackEnd();
       }
+      
+      const track = state.track_window.current_track;
+      playerStateRef.current = state;
+      if (track) {
+        setCurrentSong({
+          title: track.name,
+          artist: track.artists[0].name,
+          videoId: track.id,
+          votes: 0,
+          imageUrl: track.album.images[0]?.url,
+          uri: track.uri,
+        });
+      }
+    };
+
+    player.addListener('ready', handlePlayerReady);
+    player.addListener('not_ready', ({ device_id }: WebPlaybackInstance) => {
+      console.log('Device ID has gone offline', device_id);
+      setDeviceId(null);
+      isPlayerFullyReadyRef.current = false;
+    });
+    player.addListener('player_state_changed', handlePlayerStateChanged);
+
+    player.connect().then((success: boolean) => {
+      if (success) {
+        console.log('The Web Playback SDK successfully connected to Spotify!');
+      }
+    });
+
+    return () => {
+      player.removeListener('ready', handlePlayerReady);
+      player.removeListener('not_ready');
+      player.removeListener('player_state_changed', handlePlayerStateChanged);
+      player.disconnect();
     };
   }, [props.access_token]);
   
-  
-
   useEffect(() => {
-    if (!isPlayerReady) return; // Only proceed if the player is ready
-    console.log("outside player =", spotifyPlayer);
-  
-    const updatePlayerState = async () => {
-      if (spotifyPlayer) {
-        console.log("inside player =", spotifyPlayer);
+    const script = document.createElement("script");
+    script.src = "https://sdk.scdn.co/spotify-player.js";
+    script.async = true;
 
-        try {
-          const state = await spotifyPlayer.getCurrentState();
-          if (state) {
-            const { position, duration } = state;
-            // if (!isDragging) {
-            //   setProgress(position);
-            // }
-            setDuration(duration);
-          }
-        } catch (error) {
-          console.error("Error getting current state:", error);
-        }
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.Spotify) {
+        initializePlayer();
       }
     };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [initializePlayer]);
+
+  const handleTrackEnd = useCallback(() => {
+    setQueue((prevQueue) => {
+      const newQueue = prevQueue.slice(1);
+      const nextSong = newQueue[0];
+      if (nextSong) {
+        console.log('Playing next song');
+        setCurrentSong(nextSong);
+        playSong(nextSong);
+      } else {
+        console.log('Queue is empty');
+        setCurrentSong(null);
+        if (playerRef.current) {
+          playerRef.current.pause().catch(console.error);
+        }
+      }
+      return newQueue;
+    });
+  }, []);
   
-    const intervalId = setInterval(() => {
-      updatePlayerState();
-    }, 1000); // Update every second
-  
-    return () => clearInterval(intervalId);
-  }, [spotifyPlayer]);
-  
-
-  // useEffect(() => {
-  //   if (isPlayerReady && player) {
-  //     player.setVolume(volume / 100).catch(console.error);
-  //   }
-  // }, [isPlayerReady, volume]);
-  // useEffect(() => {
-  //   const intervalId = setInterval(() => {
-  //     if (player) {
-  //       player.getCurrentState().then((state: any) => {
-  //         if (state) {
-  //           const { position, duration } = state;
-  //           if (!isDragging) {
-  //             setProgress(position);
-  //           }
-  //           setDuration(duration);
-  //         }
-  //       }).catch((error: any) => {
-  //         console.error("Error getting current state:", error);
-  //       });
-  //     }
-  //   }, 1000); // Update every second
-
-  //   return () => clearInterval(intervalId);
-  // }, [player, isDragging, deviceId]);
-
-  const addSong = (song: Song) => {
-    setQueue([...queue, song]);
-    // saveSongsToDb([...[], song]);
-
-    if (!currentSong) {
-      // setCurrentSong(song);
-      playSong(song);
-    }
-  };
-
-  const playSong = async (song: Song) => {
-    if (!spotifyPlayer || !deviceId) {
+  console.log('present queue -', queue)
+  const playSong = useCallback(async (song: Song) => {
+    if (!isPlayerFullyReadyRef.current || !playerRef.current || !deviceIdRef.current) {
       console.error("Spotify Web Playback SDK not initialized or device ID not available");
+      // Optionally, you can retry after a short delay
+      setTimeout(() => playSong(song), 1000);
       return;
     }
 
     try {
-      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceIdRef.current}`, {
         method: 'PUT',
         body: JSON.stringify({ uris: [song.uri] }),
         headers: {
@@ -219,24 +172,39 @@ export default function MusicPlayer(props: IMusicPlayer) {
           'Authorization': `Bearer ${props.access_token}`
         },
       });
-      // setIsPlaying(true);
+      setCurrentSong(song);
     } catch (error) {
       console.error("Error playing the song:", error);
     }
-  };
+  }, [props.access_token]);
+  
+  const addSong = useCallback((song: Song) => {
+    setQueue((prevQueue) => {
+      const newQueue = [...prevQueue, song];
+      if (!currentSong && isPlayerFullyReadyRef.current) {
+        playSong(song);
+      }
+      return newQueue;
+    });
+  }, [currentSong, playSong]);
 
-  const nextSong = () => {
-    setQueue(queue.slice(1));
-    const nextSong = queue[1];
-    if (nextSong) {
-      setCurrentSong(nextSong);
-      playSong(nextSong);
-    } else {
-      setCurrentSong(null);
-      spotifyPlayer?.pause();
-      // setIsPlaying(false);
-    }
-  };
+  const nextSong = useCallback(() => {
+    setQueue((prevQueue) => {
+      const newQueue = prevQueue.slice(1);
+      const nextSong = newQueue[0];
+      if (nextSong) {
+        setCurrentSong(nextSong);
+        playSong(nextSong);
+      } else {
+        setCurrentSong(null);
+        if (playerRef.current) {
+          playerRef.current.pause().catch(console.error);
+        }
+      }
+      return newQueue;
+    });
+  }, [playSong]);
+
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -324,11 +292,13 @@ export default function MusicPlayer(props: IMusicPlayer) {
       const data = JSON.parse(textResponse);
       const { progress_ms, item } = data;
   
+      console.log('current queueu =' , queue)
       if (progress_ms !== undefined && item) {
         const trackDuration = item.duration_ms;
-        console.log(`Track progress: ${progress_ms} / ${trackDuration}`);
-        setProgress(progress_ms); // Update the progress in the state
-        setTrackDuration(trackDuration); // Update track duration in the state
+        // console.log(`Track progress: ${progress_ms} / ${trackDuration}`);
+        
+        setProgress(progress_ms);
+        setTrackDuration(trackDuration);
       } else {
         console.log("No track is currently playing.");
       }
@@ -340,9 +310,13 @@ export default function MusicPlayer(props: IMusicPlayer) {
   
   
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchTrackProgress();
-    }, 1000); // Call every second
+ 
+    let intervalId = undefined
+    if(currentSong){
+      intervalId = setInterval(() => {
+        fetchTrackProgress();
+      }, 1000); // Call every second
+    }
   
     return () => clearInterval(intervalId); // Cleanup interval on component unmount
   }, [currentSong]); // Run effect when access_token changes
@@ -351,12 +325,18 @@ export default function MusicPlayer(props: IMusicPlayer) {
     return <div>Error: No valid token provided</div>;
   }
 
+
+  const closeSearch = () => {
+    setIsSearchOpen(false);
+    setSearchResults([])
+  }
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-8">
-      <div className="bg-card rounded-lg shadow-xl max-w-4xl w-full overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground p-0">
+      <div className="max-w-3xl mx-auto space-y-6">
         <div className="p-6 space-y-4">
           {currentSong && 
-            <p>Now playing</p>
+            <p className="font-bold">Now playing</p>
           }
           <div className="flex items-center space-x-4">
             {currentSong && (
@@ -364,39 +344,34 @@ export default function MusicPlayer(props: IMusicPlayer) {
                 className="rounded-lg"
                 src={currentSong.imageUrl}
                 alt={currentSong.title}
-                width={96}
+                width={56}
                 height={24}
                 style={{height:'auto', width: 'auto'}}
                 priority
               />
             )}
             <div>
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-md font-medium">
                 {currentSong?.title || "No song playing"}
               </h2>
               <p>{currentSong?.artist || "Add songs to the queue"}</p>
             </div>
           </div>
 
-            <div className="w-full space-y-2">
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>{formatTime(progress)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-
-              <Slider
-                value={[progress]}
-                max={trackDuration}
-                onValueChange={handleSeekTrack}
-                // onMouseDown={handleSeekMouseDown}
-                // onMouseUp={handleSeekMouseUp}
-                step={1}
-                // onChange={(value) => handleSeekTrack(value)}
-                className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer appearance-none"
-                // thumbClassName="w-4 h-4 bg-green-500 rounded-full shadow-md"
-                // trackClassName="bg-green-500 h-2"
-              />
+          <div className="w-full space-y-2">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <span>{formatTime(progress)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
+
+            <Slider
+              value={[progress]}
+              max={trackDuration}
+              onValueChange={handleSeekTrack}
+              step={1}
+              className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer appearance-none"
+            />
+          </div>
 
           {currentSong && (
             <div className="flex items-center justify-between">
@@ -425,43 +400,52 @@ export default function MusicPlayer(props: IMusicPlayer) {
             </div>
           )}
 
-          <form onSubmit={handleSearch} className="flex justify-center gap-2 relative h-[26rem]">
-            <Input
-              type="text"
-              value={newSong}
-              onChange={(e) => setNewSong(e.target.value)}
-              placeholder="Search songs on Spotify"
-            />
-            <Button type="submit">Search</Button>
-            <div className="absolute top-14 w-full px-0">
-              <ScrollArea className={cn("h-96 rounded border p-4", {
-                hidden: searchResults.length <= 0
-              })}>
-                <p className="pb-2">Search results</p>
+          <form onSubmit={handleSearch} className="flex-col gap-4 space-y-4">
+            <div className="flex justify-between w-full items-center gap-2">
+              <Input
+                type="text"
+                value={newSong}
+                onChange={(e) => setNewSong(e.target.value)}
+                placeholder="Search songs on Spotify"
+              />
+              <Button type="submit" onClick={() => setIsSearchOpen(true)}>Search</Button>
+            </div>
+            {searchResults.length > 0 && isSearchOpen &&
+              <div className="overflow-y-scroll h-96 border p-4 rounded-md">
+                <div className="flex justify-between items-center pb-4">
+                  <p>Search results</p>
+                  <Button
+                    size={'icon'}
+                    variant="outline"
+                    className="mr-2"
+                    onClick={closeSearch}
+                  >
+                    <Icons.x className=""/>
+                  </Button>
+                </div>
                 {searchResults.map((song) => (
                   <div
                     key={song.videoId}
-                    className="flex items-center justify-between py-2 border-b last:border-b-0"
+                    className="flex items-center justify-center py-2 border-b last:border-b-0"
                   >
-                    <div className="flex justify-center items-center gap-4">
+                    <div key={song.videoId} className="flex items-center space-x-4 rounded-lg w-full">
                       <Image
-                        className="rounded-lg"
+                        className="rounded-sm"
                         src={song.imageUrl}
                         alt={song.title}
-                        width={64}
-                        height={16}
-                        style={{height:'auto', width: 'auto'}}
+                        width={48}
+                        height={12}
+                        style={{ height: 'auto', width: 'auto' }}
                         priority
                       />
-                      <div>
-                        <p className="font-medium">{song.title}</p>
-                        <p className="text-sm">{song.artist}</p>
+                      <div className="flex-grow min-w-20">
+                        <h3 className="font-medium truncate">{song.title}</h3>
+                        <p className="text-sm text-gray-400 truncate">{song.artist}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="whitespace-nowrap"
                         type="button"
                         onClick={() => addSong(song)}
                       >
@@ -470,45 +454,55 @@ export default function MusicPlayer(props: IMusicPlayer) {
                     </div>
                   </div>
                 ))}
-              </ScrollArea>
-            </div>
+              </div>
+            }
           </form>
 
           {queue.length > 0 && (
-            <ScrollArea className="h-64 rounded border p-4">
-              {queue.map((song) => (
-                <div
-                  key={song.videoId}
-                  className="flex items-center justify-between py-2 border-b last:border-b-0"
-                >
-                  <div className="flex justify-center items-center gap-4">
-                    <Image
-                      className="rounded-lg"
-                      src={song.imageUrl}
-                      alt={song.title}
-                      width={96}
-                      height={24}
-                      style={{height:'auto', width: 'auto'}}
-                      priority
-                    />
-                    <div>
-                      <p className="font-medium">{song.title}</p>
-                      <p className="text-sm">{song.artist}</p>
-                    </div>
+            <div className="overflow-y-scroll h-96 border p-4 rounded-md">
+            <div className="flex justify-between items-center pb-4">
+              <p>Current queue</p>
+              <Button
+                size={'icon'}
+                variant="outline"
+                className="mr-2"
+                onClick={closeSearch}
+              >
+                <Icons.x className=""/>
+              </Button>
+            </div>
+            {queue.map((song) => (
+              <div
+                key={song.videoId}
+                className="flex items-center justify-center py-2 border-b last:border-b-0"
+              >
+                <div key={song.videoId} className="flex items-center space-x-4 rounded-lg w-full">
+                  <Image
+                    className="rounded-sm"
+                    src={song.imageUrl}
+                    alt={song.title}
+                    width={48}
+                    height={12}
+                    style={{ height: 'auto', width: 'auto' }}
+                    priority
+                  />
+                  <div className="flex-grow min-w-20">
+                    <h3 className="font-medium truncate">{song.title}</h3>
+                    <p className="text-sm text-gray-400 truncate">{song.artist}</p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm">{song.votes} votes</span>
-                    {/* <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => upvoteSong(song.videoId)}
-                    >
-                      Upvote
-                    </Button> */}
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="whitespace-nowrap"
+                    type="button"
+                    // onClick={() => addSong(song)}
+                  >
+                    Upvote
+                  </Button>
                 </div>
-              ))}
-            </ScrollArea>
+              </div>
+            ))}
+          </div>
           )}
         </div>
       </div>

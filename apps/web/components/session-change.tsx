@@ -6,7 +6,7 @@ import { useSetRecoilState } from 'recoil';
 
 const SessionChange = () => {
   const session = useSession();
-  console.log('session change =', session?.data?.user)
+  // console.log('session change =', session?.data?.user)
   const setUser = useSetRecoilState(userAtom);
   useEffect(() => {
     const user = session.data?.user as useSessionData;
