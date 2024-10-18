@@ -5,7 +5,6 @@ import { customAlphabet } from 'nanoid';
 import formateRoomCode from "./helpers";
 import { Song } from "../components/player";
 import { revalidatePath } from "next/cache";
-import { access } from "fs";
 
 export const fetchSpotifyTokenOfUser = async (userId: string) => {
   try {

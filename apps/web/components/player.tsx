@@ -1,5 +1,4 @@
 "use client";
-import debounce from 'lodash.debounce';
 import Image from "next/image";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SkipForward, Volume2 } from "lucide-react";

@@ -3,7 +3,6 @@ import axios from "axios";
 import { db } from "@repo/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
-import { use } from "react";
 // import { toast } from 'sonner';
 
 export async function GET(request: Request) {

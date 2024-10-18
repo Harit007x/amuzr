@@ -83,8 +83,9 @@ export default function Home() {
       </header>
       
       <div className="grid grid-cols-1 my-60 sm:grid-cols-2 lg:grid-cols-3 grid-rows-auto max-w-[40rem] px-[2rem] mx-auto h-fit gap-2">
-      <Button 
+        <Button 
           className="gap-2"
+          onClick={handleSpotifyConnect}
         >
           {isConnected && 
             <div className="h-6 w-6">
