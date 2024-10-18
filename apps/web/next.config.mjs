@@ -5,8 +5,8 @@ const nextConfig = {
   webpack: (config, { isServer }) => {
     if (isServer) {
       config.plugins = [...config.plugins, new PrismaPlugin()]
+      config.externals = [...config.externals, 'prisma', '@prisma/client']
     }
-
     return config
   },
   images: {

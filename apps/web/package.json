@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "prisma:migrate": "cd ../../packages/db && pnpx prisma migrate dev && cd ../../apps/web",
+    "prisma:migrate": "cd ../../packages/db && pnpx prisma migrate dev && pnpx prisma generate && cd ../../apps/web",
     "dev": "next dev --turbo",
     "build": "pnpm run prisma:migrate && next build",
     "start": "next start",
