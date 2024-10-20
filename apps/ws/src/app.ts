@@ -1,17 +1,31 @@
-import http from "http";
-import SocketService from "./services/socket";
-import 'dotenv/config';
+import express from 'express';
+import http from 'http';
+import { WebSocket, WebSocketServer } from 'ws';
 
-const socketService = new SocketService();
+const app = express();
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
 
-const httpServer = http.createServer();
-console.log('port =', process.env.PORT);
-const PORT = process.env.PORT ? process.env.PORT : 8000;
+const clients = new Set<WebSocket>();
 
-socketService.io.attach(httpServer);
+wss.on('connection', (ws: WebSocket) => {
+  clients.add(ws);
+  console.log('A user connected');
 
-httpServer.listen(PORT, () => {
-    console.log(`HTTP Server listening on port ${PORT}`);
+  ws.on('message', (message: string) => {
+    const broadcastMessage = message.toString();
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(broadcastMessage);
+      }
+    });
+  });
+
+  ws.on('close', () => {
+    clients.delete(ws);
+    console.log('User disconnected');
+  });
 });
 
-socketService.eventListeners();
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

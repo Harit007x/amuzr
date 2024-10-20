@@ -26,6 +26,7 @@
     "react-spotify-web-playback": "^0.14.4",
     "react-youtube": "^10.1.0",
     "recoil": "^0.7.7",
+    "socket.io-client": "^4.7.5",
     "sonner": "^1.5.0",
     "zod": "^3.23.8"
   },

@@ -116,12 +116,16 @@ export default function Home() {
           </>
         }
 
+        <Button onClick={() =>  router.push("/chat")}>Chat</Button>
+
         <Button
           variant={'destructive'}
           onClick={() => signOut({ callbackUrl: "/" })}
         >
           Logout
         </Button>
+
+        
       </div>
 
     </main>

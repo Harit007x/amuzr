@@ -14,6 +14,7 @@ export interface Song {
   votes: number;
   imageUrl: string;
   uri: string;
+  added_to_queue?: boolean;
 }
 
 interface IMusicPlayer {
@@ -179,7 +180,15 @@ export default function MusicPlayer(props: IMusicPlayer) {
     }
   }, [props.access_token]);
   
-  const addSong = useCallback((song: Song) => {
+  const addToQueue = useCallback((song: Song) => {
+    song.added_to_queue = true
+    console.log('add it to quque =', song)
+    setSearchResults((prevResults) => 
+      prevResults.map((search_song) => 
+        search_song.videoId === song.videoId ? { ...search_song, added_to_queue: true } : search_song
+      )
+    );
+    
     setQueue((prevQueue) => {
       const newQueue = [...prevQueue, song];
       if (!currentSong && isPlayerFullyReadyRef.current) {
@@ -188,6 +197,9 @@ export default function MusicPlayer(props: IMusicPlayer) {
       return newQueue;
     });
   }, [currentSong, playSong]);
+
+  console.log('Searche songs = ', searchResults)
+
   const currentSongRef = useRef<Song | null>(null); // Initialize with null
 
   useEffect(()=>{
@@ -481,12 +493,12 @@ export default function MusicPlayer(props: IMusicPlayer) {
                       </div>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={song.added_to_queue ? "secondary" : "outline"}
                         className="whitespace-nowrap"
                         type="button"
-                        onClick={() => addSong(song)}
+                        onClick={() => addToQueue(song)}
                       >
-                        Add to queue
+                        {song.added_to_queue ?  "In queue" : "Add to queue"}
                       </Button>
                     </div>
                   </div>
@@ -532,7 +544,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
                     variant="outline"
                     className="whitespace-nowrap"
                     type="button"
-                    // onClick={() => addSong(song)}
+                    // onClick={() => addToQueue(song)}
                   >
                     Upvote
                   </Button> */}

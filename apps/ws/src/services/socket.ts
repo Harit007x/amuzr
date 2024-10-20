@@ -37,7 +37,7 @@ class SocketService {
     this._io = new Server({
       cors: {
         allowedHeaders: ['*'],
-        origin: ['http://localhost:3000', 'https://xlx-v1-web.vercel.app/'],
+        origin: ['http://localhost:3000'],
       },
     });
     sub.subscribe('MESSAGES');
@@ -70,18 +70,6 @@ class SocketService {
       });
     });
 
-    sub.on('message', async (channel, data) => {
-      const messageData = JSON.parse(data);
-      if (channel === 'MESSAGES') {
-        console.log('new message from redis', messageData);
-        if (messageData.meeting_id !== '') {
-          io.to(messageData.meeting_id).emit('message', messageData.message);
-        } else {
-          io.emit('message', messageData.message);
-        }
-      }
-
-    });
   }
 
   get io() {
