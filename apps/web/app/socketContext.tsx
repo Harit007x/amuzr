@@ -17,7 +17,7 @@ export const SocketProvider: React.FC<{ meeting_id: string; children: React.Reac
   const [socket, setSocket] = useState<Socket | null>(null);
   console.log('socket =', meeting_id);
   useEffect(() => {
-    const socketInstance = io('http://localhost:8000', {
+    const socketInstance = io(process.env.NEXT_PUBLIC_WEBSOCKET_URL as string, {
       withCredentials: true,
       transports: ['websocket', 'polling'], // Ensure WebSocket is used
     });

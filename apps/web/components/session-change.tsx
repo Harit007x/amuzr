@@ -10,7 +10,6 @@ const SessionChange = () => {
   const setUser = useSetRecoilState(userAtom);
   useEffect(() => {
     const user = session.data?.user as useSessionData;
-    console.log('user = ', user)
     if(user){
       setUser(user);
     }

@@ -29,20 +29,20 @@ if (process.env.REDIS_URL) {
   };
 }
 
-const pub = createRedisClient(redisConfig);
-const sub = createRedisClient(redisConfig);
+// const pub = createRedisClient(redisConfig);
+// const sub = createRedisClient(redisConfig);
 class SocketService {
   private _io: Server;
   constructor() {
     this._io = new Server({
       cors: {
         allowedHeaders: ['*'],
-        origin: ['http://localhost:3000'],
+        origin: ['http://localhost:3000', 'https://amuzr.haritpatel.site'],
       },
     });
-    sub.subscribe('MESSAGES');
-    sub.subscribe('QUESTIONS');
-    sub.subscribe('QUESTION-ACTION');
+    // sub.subscribe('MESSAGES');
+    // sub.subscribe('QUESTIONS');
+    // sub.subscribe('QUESTION-ACTION');
   }
 
   public eventListeners() {
@@ -51,13 +51,13 @@ class SocketService {
     io.on('connection', (socket) => {
       console.log('connected user');
 
-      socket.on('message', async (message: string, meeting_id: string, user_id: number) => {
-        console.log('message event =', message, meeting_id, user_id);
+      socket.on('message', async (message: string, meeting_id: string) => {
+        console.log('message event =', message, meeting_id);
         let new_message = null;
-
-        if (new_message) {
-          await pub.publish('MESSAGES', JSON.stringify({ meeting_id, message: new_message }));
-        }
+        io.emit('message', message)
+        // if (new_message) {
+        //   await pub.publish('MESSAGES', JSON.stringify({ meeting_id, message: new_message }));
+        // }
       });
 
       socket.on('joinRoom', (room_id: string) => {
