@@ -5,7 +5,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
 import Image from "next/image"; // Ensure you're importing Image
 import { useRouter } from "next/navigation";
-import { createRoom, fetchSpotifyTokenOfUser } from "../lib/actions";
+import { createRoom, fetchSpotifyToken } from "../lib/actions";
 import { useRecoilValue } from "recoil";
 import { userAtom } from "@repo/recoil";
 import { useEffect, useState } from "react";
@@ -27,7 +27,7 @@ export default function Home() {
   }
 
   const isSpotifyConnected = async () =>{
-    const { spotifyConnected } = await fetchSpotifyTokenOfUser(user?.id as string);
+    const { spotifyConnected } = await fetchSpotifyToken(user?.id as string);
     setIsConnected(spotifyConnected as boolean)
     console.log('connecte or not  =', spotifyConnected);
   }

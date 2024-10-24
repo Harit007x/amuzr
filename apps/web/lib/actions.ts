@@ -6,7 +6,7 @@ import formateRoomCode from "./helpers";
 import { Song } from "../components/player";
 import { revalidatePath } from "next/cache";
 
-export const fetchSpotifyTokenOfUser = async (userId: string) => {
+export const fetchSpotifyToken = async (userId: string) => {
   try {
     // Fetch the token object from the database
     const tokenObj = await db.spotifyTokens.findFirst({
@@ -72,6 +72,61 @@ export const fetchSpotifyTokenOfUser = async (userId: string) => {
     throw new Error('Failed to fetch the access token');
   }
 };
+
+export const refreshSpotifyToken = async (userId: string) => {
+  const tokenObj = await db.spotifyTokens.findFirst({
+    where: { userId },
+  });
+
+  if(!tokenObj){
+    console.error('Refreshing spotify token failed');
+    return
+  }
+
+  // Check if the token has expired
+  const currentTime = Math.floor(Date.now() / 1000); // current time in seconds
+  const tokenExpiryTime = tokenObj.createdAt.getTime() / 1000 + tokenObj.expires_in;
+
+  if (currentTime >= tokenExpiryTime) {
+    console.log('Token has expired. Refreshing... wrapper');
+
+    const refreshToken = tokenObj.refresh_token;
+
+    // Call the Spotify API to refresh the token
+    const response = await axios.post(
+      'https://accounts.spotify.com/api/token',
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: process.env.NEXT_SPOTIFY_CLIENT_ID as string,
+        client_secret: process.env.NEXT_SPOTIFY_CLIENT_SECRET as string,
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        }
+      }
+    );
+
+    const { access_token, expires_in } = response.data;
+
+    // Update the database with the new access token
+    await db.spotifyTokens.update({
+      where: { id: tokenObj.id },
+      data: {
+        access_token,
+        expires_in,
+        createdAt: new Date(), // Update with the current time
+      },
+    });
+
+    // Revalidate the current path to update the UI
+    // revalidatePath('/player'); // Replace with the actual page you want to revalidate
+
+    console.log('Token refreshed successfully');
+    return  access_token ;
+  }
+}
 
 export const createRoom = async (userId: string) => {
   const collaborative_room_code = customAlphabet('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', 10);

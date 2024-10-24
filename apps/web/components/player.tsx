@@ -6,6 +6,7 @@ import { Button, Input, Slider } from "@repo/ui/shadcn";
 import { searchSpotify } from "../lib/spotify";
 import { WebPlaybackInstance } from "../types/spotify";
 import { Icons } from "@repo/ui/icons";
+import { spotifyApiCall } from "../utility/helpers/spotifyApiCall";
 
 export interface Song {
   title: string;
@@ -19,6 +20,7 @@ export interface Song {
 
 interface IMusicPlayer {
   access_token: string | undefined;
+  user_id: string
 }
 
 declare global {
@@ -33,6 +35,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const deviceIdRef = useRef<string | null>(null);
   const playerStateRef = useRef<any>(null);
 
+  const [isDragging, setIsDragging] = useState(false);
   const [queue, setQueue] = useState<Song[]>([]);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
@@ -41,8 +44,8 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);  // Current playback time (in milliseconds)
-  const [duration, setDuration] = useState(0);  // Total duration of the song (in milliseconds)
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [trackDuration, setTrackDuration] = useState(0);
   const isPlayerFullyReadyRef = useRef<boolean>(false);
 
@@ -72,7 +75,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
 
     const handlePlayerStateChanged = (state: any) => {
       console.log('State changed', state.position, state.duration);
-      setProgress(state.position);
+      // setProgress(state.position);
       setDuration(state.duration);
       
       if (playerStateRef.current && !playerStateRef.current.paused && state.paused && state.position === 0) {
@@ -138,24 +141,26 @@ export default function MusicPlayer(props: IMusicPlayer) {
     setQueue((prevQueue) => {
       const newQueue = prevQueue.slice(1);
       const nextSong = newQueue[0];
+      console.log('check queue =', prevQueue, newQueue)
       if (nextSong) {
         console.log('Playing next song');
         setCurrentSong(nextSong);
         playSong(nextSong);
       } else {
         console.log('Queue is empty');
-        setCurrentSong(null);
+        // setCurrentSong(null);
         setIsPlaying(false);
 
         if (playerRef.current) {
           playerRef.current.pause().catch(console.error);
         }
+        return prevQueue
       }
       return newQueue;
     });
   }, []);
   
-  console.log('present queue -', queue)
+  // console.log('present queue -', queue)
   const playSong = useCallback(async (song: Song) => {
     if (!isPlayerFullyReadyRef.current || !playerRef.current || !deviceIdRef.current) {
       console.error("Spotify Web Playback SDK not initialized or device ID not available");
@@ -165,14 +170,21 @@ export default function MusicPlayer(props: IMusicPlayer) {
     }
 
     try {
-      await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceIdRef.current}`, {
-        method: 'PUT',
-        body: JSON.stringify({ uris: [song.uri] }),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${props.access_token}`
-        },
-      });
+      await spotifyApiCall(
+        (access_token: string) => {
+            fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceIdRef.current}`, {
+              method: 'PUT',
+              body: JSON.stringify({ uris: [song.uri] }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${access_token}`
+              },
+            });
+        }, 
+        props.user_id,
+        props.access_token as string
+      );
+
       setIsPlaying(true);
       setCurrentSong(song);
     } catch (error) {
@@ -182,7 +194,6 @@ export default function MusicPlayer(props: IMusicPlayer) {
   
   const addToQueue = useCallback((song: Song) => {
     song.added_to_queue = true
-    console.log('add it to quque =', song)
     setSearchResults((prevResults) => 
       prevResults.map((search_song) => 
         search_song.videoId === song.videoId ? { ...search_song, added_to_queue: true } : search_song
@@ -198,9 +209,8 @@ export default function MusicPlayer(props: IMusicPlayer) {
     });
   }, [currentSong, playSong]);
 
-  console.log('Searche songs = ', searchResults)
 
-  const currentSongRef = useRef<Song | null>(null); // Initialize with null
+  const currentSongRef = useRef<Song | null>(null);
 
   useEffect(()=>{
     currentSongRef.current = currentSong
@@ -211,7 +221,16 @@ export default function MusicPlayer(props: IMusicPlayer) {
       const newQueue = prevQueue.slice(1);
       const nextSong = newQueue[0];
       if (nextSong) {
-        setCurrentSong(nextSong);
+        console.log('current song =', currentSong)
+
+        setCurrentSong((prevSong) => {
+          setSearchResults((prevResults) => 
+            prevResults.map((search_song) =>
+              search_song.videoId === prevSong?.videoId ? { ...search_song, added_to_queue: true } : {...search_song, added_to_queue: false}
+            )
+          );
+          return nextSong
+        });
         playSong(nextSong);
       } else {
         console.log('---- there are no next songs to play ----')
@@ -242,6 +261,11 @@ export default function MusicPlayer(props: IMusicPlayer) {
     setNewSong("");
   };
 
+  const handleProgressChange = (value: number[]) => {
+    const newProgress = value[0];
+    setProgress(newProgress as number)
+  }
+
   const handleSeekTrack = async (positionMs: number[]) => {
     const ms: number = positionMs[0] || 0
     console.log("check the seconds =", ms)
@@ -251,23 +275,34 @@ export default function MusicPlayer(props: IMusicPlayer) {
     }
   
     try {
-      await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${ms}&device_id=${deviceId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${props.access_token}`,
-          'Content-Type': 'application/json'
+      await spotifyApiCall(
+        (access_token: string) => {
+          fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${ms}&device_id=${deviceId}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${access_token}`,
+              'Content-Type': 'application/json'
+            },
+          }); 
         },
-      });
-  
+        props.user_id,
+        props.access_token as string
+      );
       console.log(`Track seeked to ${ms} milliseconds.`);
     } catch (error) {
       console.error("Error seeking the track:", error);
     }
   };
  
-  let timeoutID: any
-
+  let timeoutID: NodeJS.Timeout | null = null;
+  let currentAbortController: AbortController | null = null;
+  
   const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume as number);
+  };
+
+  const handleVolumeCommit = (value: number[]) => {
     const newVolume = value[0];
   
     if (newVolume === undefined) {
@@ -275,36 +310,90 @@ export default function MusicPlayer(props: IMusicPlayer) {
       return;
     }
   
-    if(timeoutID){
+    if (currentAbortController) {
+      currentAbortController.abort();
+    }
+  
+    if (timeoutID) {
       clearTimeout(timeoutID);
     }
   
+    currentAbortController = new AbortController();
+  
     timeoutID = setTimeout(async () => {
       try {
-        await fetch(`https://api.spotify.com/v1/me/player/volume?volume_percent=${newVolume}&device_id=${deviceId}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${props.access_token}`
+        console.log('volume changed call')
+        await spotifyApiCall(
+          (access_token: string) => {
+            return fetch(
+              `https://api.spotify.com/v1/me/player/volume?volume_percent=${newVolume}&device_id=${deviceId}`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Bearer ${access_token}`
+                },
+                signal: currentAbortController!.signal
+              }
+            );
           },
-        });
-        console.log("Volume updated to", newVolume);
-      } catch (error) {
-        console.error("Error updating the volume:", error);
+          props.user_id,
+          props.access_token as string
+        );
+      } catch (error:any) {
+        if (error.name !== 'AbortError') {
+          console.error("Error updating the volume:", error);
+        }
       }
-    }, 500)
-
+    }, 500);
+    
     setVolume(newVolume);
   };
 
+  let progressIntervalId: NodeJS.Timeout | null = null;
+
+  const startProgressPolling = useCallback(() => {
+    if (progressIntervalId) {
+      clearInterval(progressIntervalId);
+    }
+  
+    progressIntervalId = setInterval(() => {
+      fetchTrackProgress();
+    }, 1000);
+  
+    return progressIntervalId;
+  }, []);
+
+  const stopProgressPolling = useCallback(() => {
+    if (progressIntervalId) {
+      clearInterval(progressIntervalId);
+      progressIntervalId = null;
+    }
+  }, []);
+
+  const handleDragStart = () => {
+    setIsDragging(true);
+    stopProgressPolling();
+  };
+  
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+  
   const fetchTrackProgress = async () => {
     try {
-      const response = await fetch('https://api.spotify.com/v1/me/player', {
-        headers: {
-          'Authorization': `Bearer ${props.access_token}`,
-          'Content-Type': 'application/json',
+      const response = await spotifyApiCall(
+        (access_token: string) => {
+          return fetch('https://api.spotify.com/v1/me/player', {
+            headers: {
+              'Authorization': `Bearer ${access_token}`,
+              'Content-Type': 'application/json',
+            },
+          });
         },
-      });
-  
+        props.user_id,
+        props.access_token as string
+      );
+      
       if (!response.ok) {
         console.error("Failed to fetch track progress:", response.statusText);
         return;
@@ -320,7 +409,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
       const data = JSON.parse(textResponse);
       const { progress_ms, item } = data;
   
-      console.log('current queueu =' , queue)
+      // console.log('current queueu =' , queue)
       if (progress_ms !== undefined && item) {
         const trackDuration = item.duration_ms;
         // console.log(`Track progress: ${progress_ms} / ${trackDuration}`);
@@ -341,23 +430,20 @@ export default function MusicPlayer(props: IMusicPlayer) {
     let intervalId = undefined
  
     if(!isPlaying){
-      clearInterval(intervalId)
-      return
+      stopProgressPolling()
+      return;
     }
 
     if(currentSong){
-      intervalId = setInterval(() => {
-        fetchTrackProgress();
-      }, 1000); // Call every second
+      intervalId = startProgressPolling(); 
     }
   
-    return () => clearInterval(intervalId); // Cleanup interval on component unmount
-  }, [currentSong, isPlaying]); // Run effect when access_token changes
+    return () => clearInterval(intervalId);
+  }, [currentSong, isPlaying]);
   
   if (!props.access_token) {
     return <div>Error: No valid token provided</div>;
   }
-
 
   const closeSearch = () => {
     setIsSearchOpen(false);
@@ -367,13 +453,19 @@ export default function MusicPlayer(props: IMusicPlayer) {
   const togglePlayPause = async () => {
     try {
       const url = isPlaying === false ? 'https://api.spotify.com/v1/me/player/play' : 'https://api.spotify.com/v1/me/player/pause'
-      await fetch(url, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${props.access_token}`
+      await spotifyApiCall(
+        (access_token:string) => {
+          fetch(url, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${access_token}`
+            },
+          });
         },
-      });
+        props.user_id,
+        props.access_token as string
+      );
       setIsPlaying(!isPlaying);
     } catch (error) {
       console.error("Error playing the song:", error);
@@ -416,7 +508,10 @@ export default function MusicPlayer(props: IMusicPlayer) {
             <Slider
               value={[progress]}
               max={trackDuration}
-              onValueChange={handleSeekTrack}
+              onValueCommit={handleSeekTrack}
+              onValueChange={handleProgressChange}
+              onPointerDown={handleDragStart}
+              onPointerUp={handleDragEnd}
               step={1}
               className="w-full h-2 bg-gray-200 rounded-lg cursor-pointer appearance-none"
             />
@@ -442,6 +537,7 @@ export default function MusicPlayer(props: IMusicPlayer) {
                   className="w-32"
                   value={[volume]}
                   onValueChange={handleVolumeChange}
+                  onValueCommit={handleVolumeCommit}
                   max={100}
                   step={1}
                 />

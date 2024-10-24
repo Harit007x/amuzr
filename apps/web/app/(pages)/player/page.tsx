@@ -1,5 +1,5 @@
 import MusicPlayer from "../../../components/player";
-import { fetchSpotifyTokenOfUser } from "../../../lib/actions"; // Import the action
+import { fetchSpotifyToken } from "../../../lib/actions"; // Import the action
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../lib/auth";
 
@@ -9,7 +9,7 @@ export default async function Page() {
   const session = await getServerSession(authOptions);
 
   // Fetch the Spotify token for the current user using the server action
-  const { access_token } = await fetchSpotifyTokenOfUser(session?.user?.id);
+  const { access_token } = await fetchSpotifyToken(session?.user?.id);
 
   // Handle the case where access_token is null or undefined
   if (!access_token) {
@@ -20,6 +20,7 @@ export default async function Page() {
   return (
     <MusicPlayer
       access_token={access_token} // Pass the fetched access token
+      user_id={session?.user?.id as string}
     />
   );
 }
