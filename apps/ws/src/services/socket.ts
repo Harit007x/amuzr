@@ -29,8 +29,8 @@ if (process.env.REDIS_URL) {
   };
 }
 
-// const pub = createRedisClient(redisConfig);
-// const sub = createRedisClient(redisConfig);
+const pub = createRedisClient(redisConfig);
+const sub = createRedisClient(redisConfig);
 class SocketService {
   private _io: Server;
   constructor() {
@@ -40,9 +40,7 @@ class SocketService {
         origin: ['http://localhost:3000', 'https://amuzr.haritpatel.site'],
       },
     });
-    // sub.subscribe('MESSAGES');
-    // sub.subscribe('QUESTIONS');
-    // sub.subscribe('QUESTION-ACTION');
+    sub.subscribe('MESSAGES');
   }
 
   public eventListeners() {
@@ -54,10 +52,9 @@ class SocketService {
       socket.on('message', async (message: string, meeting_id: string) => {
         console.log('message event =', message, meeting_id);
         let new_message = null;
-        io.emit('message', message)
-        // if (new_message) {
-        //   await pub.publish('MESSAGES', JSON.stringify({ meeting_id, message: new_message }));
-        // }
+        if (message) {
+          await pub.publish('MESSAGES', JSON.stringify({ meeting_id, message: message }));
+        }
       });
 
       socket.on('joinRoom', (room_id: string) => {
@@ -70,6 +67,19 @@ class SocketService {
       });
     });
 
+
+    sub.on('message', async (channel, data) => {
+      console.log('sub mesasge logged')
+      const messageData = JSON.parse(data);
+      if (channel === 'MESSAGES') {
+        console.log('new message from redis', messageData);
+        if (messageData.meeting_id !== '') {
+          io.to(messageData.meeting_id).emit('message', messageData.message);
+        } else {
+          io.emit('message', messageData.message);
+        }
+      }
+    });
   }
 
   get io() {
