@@ -193,20 +193,29 @@ export default function MusicPlayer(props: IMusicPlayer) {
   }, [props.access_token]);
   
   const addToQueue = useCallback((song: Song) => {
-    song.added_to_queue = true
-    setSearchResults((prevResults) => 
-      prevResults.map((search_song) => 
-        search_song.videoId === song.videoId ? { ...search_song, added_to_queue: true } : search_song
-      )
-    );
     
     setQueue((prevQueue) => {
+
+      const isSameSongPresent = prevQueue.some((item: Song) => item.videoId === song.videoId)
+      console.log(' same song exist  = ', isSameSongPresent)
+
+      if(isSameSongPresent){
+        return prevQueue
+      }
+
       const newQueue = [...prevQueue, song];
       if (!currentSong && isPlayerFullyReadyRef.current) {
         playSong(song);
       }
       return newQueue;
     });
+    
+    song.added_to_queue = true
+    setSearchResults((prevResults) => 
+      prevResults.map((search_song) => 
+        search_song.videoId === song.videoId ? { ...search_song, added_to_queue: true } : search_song
+      )
+    );
   }, [currentSong, playSong]);
 
 
@@ -221,16 +230,20 @@ export default function MusicPlayer(props: IMusicPlayer) {
       const newQueue = prevQueue.slice(1);
       const nextSong = newQueue[0];
       if (nextSong) {
-        console.log('current song =', currentSong)
-
+        console.log('current song =', currentSong);
+        let skippedSong: Song; 
         setCurrentSong((prevSong) => {
-          setSearchResults((prevResults) => 
-            prevResults.map((search_song) =>
-              search_song.videoId === prevSong?.videoId ? { ...search_song, added_to_queue: true } : {...search_song, added_to_queue: false}
-            )
-          );
+          skippedSong = prevSong as Song
           return nextSong
         });
+        setSearchResults((prevResults) => 
+          prevResults.map((search_song) =>{
+            console.log('Update the songs!!!!!=!!!!!', skippedSong)
+            return(
+              search_song.videoId === skippedSong?.videoId ? { ...search_song, added_to_queue: false } : search_song
+            )     
+          })
+        );
         playSong(nextSong);
       } else {
         console.log('---- there are no next songs to play ----')
@@ -249,14 +262,22 @@ export default function MusicPlayer(props: IMusicPlayer) {
       return
     }
     const results = await searchSpotify(newSong, props.access_token);
-    const formattedResults = results.map((item: any) => ({
-      videoId: item.id,
-      title: item.name,
-      artist: item.artists[0].name,
-      votes: 0,
-      uri: item.uri,
-      imageUrl: item.album.images[0]?.url
-    }));
+    let formattedResults = results.map((item: any) => {
+      const matchedSong = queue.find((song: Song) => song.videoId === item.id);
+      if(matchedSong){
+        return matchedSong
+      }else{
+        return {
+          videoId: item.id,
+          title: item.name,
+          artist: item.artists[0].name,
+          votes: 0,
+          uri: item.uri,
+          imageUrl: item.album.images[0]?.url
+        }
+      }
+    });
+
     setSearchResults(formattedResults);
     setNewSong("");
   };
