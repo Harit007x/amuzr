@@ -3,8 +3,8 @@ import { db } from "@repo/db"
 import axios from 'axios';
 import { customAlphabet } from 'nanoid';
 import formateRoomCode from "./helpers";
-import { Song } from "../components/player";
 import { revalidatePath } from "next/cache";
+import { Song } from "../types/spotify";
 
 export const fetchSpotifyToken = async (userId: string) => {
   try {
@@ -169,7 +169,7 @@ export const addSongsToRoom = async (
           create: songList.map(song => ({
             title: song.title,
             artist: song.artist,
-            videoId: song.videoId,
+            songId: song.songId,
             imageUrl: song.imageUrl,
           })),
         },
@@ -182,5 +182,22 @@ export const addSongsToRoom = async (
     console.log('Songs added successfully to the room:', updatedRoom);
   } catch (error) {
     console.error('Error adding songs to the room:', error);
+  }
+};
+
+export const removeSongFromRoom = async (roomId: number, songId: string) => {
+  try {
+
+    await db.song.delete({
+      where: {
+        songId: songId,
+        roomId: roomId,
+      },
+    });
+
+    console.log('Song removed successfully from the room');
+  } catch (error) {
+    console.error('Error removing song from the room:', error);
+    throw error;
   }
 };

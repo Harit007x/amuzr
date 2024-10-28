@@ -60,7 +60,7 @@ model Song {
   title     String
   artist    String
   roomId    Int
-  videoId   String
+  songId   String  @unique
   imageUrl String
   room      Room   @relation(fields: [roomId], references: [id])
   votes     Vote[]

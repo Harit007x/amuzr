@@ -70,3 +70,13 @@ export interface Window {
     }) => ISpotifyPlayer;
   };
 }
+
+export interface Song {
+  title: string;
+  artist: string;
+  songId: string;
+  votes: number;
+  imageUrl: string;
+  uri: string;
+  added_to_queue?: boolean;
+}

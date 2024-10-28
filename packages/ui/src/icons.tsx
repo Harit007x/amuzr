@@ -59,6 +59,7 @@ import {
   Play,
   CirclePause,
   CircleArrowRight,
+  SkipForward,
 } from 'lucide-react';
 
 export const Icons = {
@@ -119,6 +120,7 @@ export const Icons = {
   circlePlay: CirclePlay,
   circlePause: CirclePause,
   circleArrowRight: CircleArrowRight,
+  skipForward: SkipForward,
   checkSVG: ({ ...props }: LucideProps) => (
     <svg
       aria-hidden="true"

@@ -108,13 +108,14 @@ export default function Home() {
           isConnected && 
           <>
             <Button onClick={() =>  router.push("/player")}>Player</Button>
-            {/* <Button
-              onClick={() => handleCreateRoom()}
-            >
-              Create room
-            </Button> */}
           </>
         }
+        
+        <Button
+          onClick={() => handleCreateRoom()}
+        >
+          Create room
+        </Button>
 
         <Button onClick={() =>  router.push("/chat")}>Chat</Button>
 
